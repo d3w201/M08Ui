@@ -30,7 +30,7 @@ namespace Controller.Items
         public void DoInteract()
         {
             var interactable = this.gameObject.GetComponent<Interactable>();
-            DialogController.CustomShow(interactable.GetDialogData());
+            DialogController.Show(interactable.GetDialogData());
         }
     }
 }

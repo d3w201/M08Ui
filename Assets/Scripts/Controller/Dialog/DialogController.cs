@@ -1,30 +1,4 @@
-﻿/*
-The MIT License
-
-Copyright (c) 2020 DoublSB
-https://github.com/DoublSB/UnityDialogAsset
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-
-using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Entity.Dialog;
 using Enumeral;
@@ -36,15 +10,13 @@ namespace Controller.Dialog
     public class DialogController : RootController
     {
         //Public-props
-        [Header("Game Objects")] public GameObject Printer, Characters;
+        [Header("Game Objects")] public GameObject Printer;
         [Header("UI Objects")] public Text Printer_Text;
-        [Header("Audio Objects")] public AudioSource SEAudio, CallAudio;
         [Header("Preference")] public float Delay = 0.1f;
         [Header("Selector")] public GameObject Selector, SelectorItem;
         [Header("Text")] public Text SelectorItemText;
 
         [HideInInspector] public State state;
-        [HideInInspector] public string Result;
 
         //Private-props
         private DialogData _currentData;
@@ -61,16 +33,30 @@ namespace Controller.Dialog
         }
 
         //Public Method
-        public void CustomShow(DialogData data)
-        {
-            if (!GameStatus.interact.Equals(GameController.GetStatus())) GameController.SetStatus(GameStatus.interact);
-            _currentData = data;
-            _textingRoutine = StartCoroutine(Activate());
-        }
-
-        public void CustomShow(List<DialogData> data)
+        public void Show(List<DialogData> data)
         {
             StartCoroutine(CustomActivate_List(data));
+        }
+        public void Hide()
+        {
+            if (_textingRoutine != null)
+                StopCoroutine(_textingRoutine);
+
+            if (_printingRoutine != null)
+                StopCoroutine(_printingRoutine);
+
+            Printer.SetActive(false);
+            Selector.SetActive(false);
+
+            state = State.Deactivate;
+
+            GameController.SetStatus(GameStatus.play);
+
+            if (_currentData?.Callback != null)
+            {
+                _currentData.Callback.Invoke();
+                _currentData.Callback = null;
+            }
         }
 
         public void Click_Window()
@@ -87,38 +73,10 @@ namespace Controller.Dialog
             }
         }
 
-        public void Hide()
-        {
-            if (_textingRoutine != null)
-                StopCoroutine(_textingRoutine);
-
-            if (_printingRoutine != null)
-                StopCoroutine(_printingRoutine);
-
-            Printer.SetActive(false);
-            Characters.SetActive(false);
-            Selector.SetActive(false);
-
-            state = State.Deactivate;
-
-            GameController.SetStatus(GameStatus.play);
-
-            if (_currentData?.Callback != null)
-            {
-                _currentData.Callback.Invoke();
-                _currentData.Callback = null;
-            }
-        }
-
-        #region
-
         public void Select(int index)
         {
-            Result = _currentData.SelectList.GetByIndex(index).Key;
             Hide();
         }
-
-        #endregion
 
         #region Speed
 
@@ -150,13 +108,19 @@ namespace Controller.Dialog
         #endregion
 
         //Private-methods
+        private void CustomShow(DialogData data)
+        {
+            if (!GameStatus.interact.Equals(GameController.GetStatus())) GameController.SetStatus(GameStatus.interact);
+            _currentData = data;
+            _textingRoutine = StartCoroutine(Activate());
+        }
+
         private void _initialize()
         {
             _currentDelay = Delay;
             _lastDelay = 0.1f;
             Printer_Text.text = string.Empty;
             Printer.SetActive(true);
-            foreach (Transform item in Characters.transform) item.gameObject.SetActive(false);
         }
 
         private void _init_selector()
